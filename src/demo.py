@@ -1,5 +1,6 @@
 import os
 import pygame
+from pygame.transform import grayscale
 
 pygame.init()
 
@@ -10,14 +11,14 @@ SCREEN_HEIGHT = int(SCREEN_WIDTH * 0.8)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('Shooter')
 
-#define game variables
+#Dinh nghia cac bien trong GAME
 GRAVITY = 0.75
 
 #set framerate
 clock = pygame.time.Clock()
 FPS = 60
 
-#define player action variables
+#Dinh nghia cac hanh dong nhan vat
 shoot1 = False
 shoot2 = False
 
@@ -27,10 +28,17 @@ moving_right_player1 = False
 moving_left_player2 = False
 moving_right_player2 = False
 
+grenade = False
+grenade_thrown = False
 
+#Tai hinh anh
+#Luu dan
+grenade_img = pygame.image.load('../assets/img/icons/grenade.png').convert_alpha()
+
+#Vien dan
 bullet_img = pygame.image.load('../assets/img/icons/bullet.png').convert_alpha()
 
-#define colours
+#Mau sac
 BG = (144, 201, 120)
 RED = (255, 0, 0)
 
@@ -39,9 +47,9 @@ def draw_bg():
     pygame.draw.line(screen, RED, (0, 300), (SCREEN_WIDTH, 300))
 
 
-
+# Nhan vat
 class Soldier(pygame.sprite.Sprite):
-    def __init__(self, char_type, x, y, scale, speed, ammo):
+    def __init__(self, char_type, x, y, scale, speed, ammo, grenades):
         pygame.sprite.Sprite.__init__(self)
         self.alive = True
         self.char_type = char_type
@@ -49,6 +57,7 @@ class Soldier(pygame.sprite.Sprite):
         self.ammo = ammo
         self.start_ammo = ammo
         self.shoot_cooldown = 0
+        self.grenades = grenades
         self.health = 100
         self.max_health = self.health
         self.direction = 1
@@ -61,12 +70,12 @@ class Soldier(pygame.sprite.Sprite):
         self.action = 0
         self.update_time = pygame.time.get_ticks()
 
-        # load all images for the players
+        # Cac hanh dong cua nhan vat
         animation_types = ['Idle', 'Run', 'Jump', 'Death']
         for animation in animation_types:
             # reset temporary list of images
             temp_list = []
-            # count number of files in the folder
+            # Load tung hinh anh trong folder hanh dong nhan vat de tao ra chuyen dong nhan vat
             num_of_frames = len(os.listdir(f'../assets/img/{self.char_type}/{animation}'))
             for i in range(num_of_frames):
                 img = pygame.image.load(f'../assets/img/{self.char_type}/{animation}/{i}.png').convert_alpha()
@@ -90,7 +99,7 @@ class Soldier(pygame.sprite.Sprite):
         dx = 0
         dy = 0
 
-        # assign movement variables if moving left or right
+        # di chuyen trai, phai, nhay cua nhan vat
         if moving_left:
             dx = -self.speed
             self.flip = True
@@ -106,18 +115,18 @@ class Soldier(pygame.sprite.Sprite):
             self.jump = False
             self.in_air = True
 
-        # apply gravity
+        # Trong luc
         self.vel_y += GRAVITY
         if self.vel_y > 10:
             self.vel_y
         dy += self.vel_y
 
-        # check collision with floor
+        # Kiem tra khi nhan vat cham mat dat
         if self.rect.bottom + dy > 300:
             dy = 300 - self.rect.bottom
             self.in_air = False
 
-        # update rectangle position
+        # Cap nhat vi trỉ nhan vat
         self.rect.x += dx
         self.rect.y += dy
 
@@ -127,19 +136,19 @@ class Soldier(pygame.sprite.Sprite):
             bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery,
                             self.direction)
             bullet_group.add(bullet)
-            # reduce ammo
+            # Giam dan khi ban
             self.ammo -= 1
 
     def update_animation(self):
         # update animation
         ANIMATION_COOLDOWN = 100
-        # update image depending on current frame
+        # Cap nhat trang thai nhan vat (dang dung, nhay hay di chuyen)
         self.image = self.animation_list[self.action][self.frame_index]
         # check if enough time has passed since the last update
         if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
-        # if the animation has run out the reset back to the start
+        # reset frame index hinh anh khi load ra ngoai mang frame
         if self.frame_index >= len(self.animation_list[self.action]):
             if self.action == 3:
                 self.frame_index = len(self.animation_list[self.action]) - 1
@@ -147,10 +156,10 @@ class Soldier(pygame.sprite.Sprite):
                 self.frame_index = 0
 
     def update_action(self, new_action):
-        # check if the new action is different to the previous one
+        # Kiem tra neu hanh dong hien tai co khac voi hanh dong truoc do khong?
         if new_action != self.action:
             self.action = new_action
-            # update the animation settings
+            # Cap nhat lai trang thai
             self.frame_index = 0
             self.update_time = pygame.time.get_ticks()
 
@@ -174,20 +183,20 @@ class Bullet(pygame.sprite.Sprite):
         self.direction = direction
 
     def update(self):
-        #move bullet
+        #Chuyen dong cua vien dan
         self.rect.x += (self.direction * self.speed)
-        #check if bullet has gone off screen
+        #Kiem tra neu vien dan bay ra ngoai man hinh
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
             self.kill()
 
-        #check collision with characters
+        #Kiem tra dan co va cham voi nhan vat
         if pygame.sprite.spritecollide(player1, bullet_group, False):
             if player1.alive and player1.char_type != player2.char_type:
                 print("Player1 bị trúng đạn")
                 player1.health -= 5
                 self.kill()
         if pygame.sprite.spritecollide(player2, bullet_group, False):
-            if player2.alive:
+            if player2.alive and player2.char_type != player1.char_type:
                 print("Player2 bị trúng đạn")
                 player2.health -= 5
                 self.kill()
@@ -198,14 +207,43 @@ class Bullet(pygame.sprite.Sprite):
                 enemy1.health -= 25
                 self.kill()
 
+class Grenade(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__init__(self)
+        self.timer = 100
+        self.vel_y = -11
+        self.speed = 7
+        self.image = grenade_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
 
+    def update(self):
+        self.vel_y += GRAVITY
+        dx = self.direction * self.speed
+        dy = self.vel_y
+
+        #Kiem tra luu dan khi roi xuong mat dat
+        if self.rect.bottom + dy > 300:
+            dy = 300 - self.rect.bottom
+            self.speed = 0
+
+        #Khi luu dan va cham voi tuong, vat the trong game
+        if self.rect.left + dx < 0 or self.rect.right + dx > SCREEN_WIDTH:
+            self.direction *= -1
+            dx = self.direction * self.speed
+
+        #Cap nhat vi tri cua luu dan
+        self.rect.x += dx
+        self.rect.y += dy
 
 #create sprite groups
 bullet_group = pygame.sprite.Group()
+grenade_group = pygame.sprite.Group()
 
-player1 = Soldier('player', 200, 200, 3, 5, 20)
-player2 = Soldier('player', 300, 200, 3, 5, 20)
-enemy1 = Soldier('enemy', 400, 200, 3, 5, 20)
+player1 = Soldier('player', 200, 200, 3, 5, 20, 5)
+player2 = Soldier('player', 300, 200, 3, 5, 20, 5)
+enemy1 = Soldier('enemy', 400, 200, 3, 5, 20, 0)
 
 
 
@@ -220,20 +258,32 @@ while run:
     enemy1.update()
 
     player1.draw()
-    player2.draw()
+    # player2.draw()
     enemy1.draw()
 
     # update and draw groups
     bullet_group.update()
     bullet_group.draw(screen)
+    grenade_group.update()
+    grenade_group.draw(screen)
 
-    player2.move(moving_left_player2, moving_right_player2)
-    player1.move(moving_left_player1, moving_right_player1)
+    #
+    # player2.move(moving_left_player2, moving_right_player2)
+    # player1.move(moving_left_player1, moving_right_player1)
 
     if player1.alive:
-        # shoot bullets
+        # Hanh dong ban cua nhan vat
         if shoot1:
             player1.shoot()
+
+        #Hanh dong nem luu dan cua nhan vat
+        elif grenade and grenade_thrown == False and player1.grenades > 0:
+            grenade = Grenade(player1.rect.centerx + (0.5 * player1.rect.size[0] * player1.direction), \
+                              player1.rect.top, player1.direction)
+            grenade_group.add(grenade)
+            # reduce grenades
+            player1.grenades -= 1
+            grenade_thrown = True
         if player1.in_air:
             player1.update_action(2)  # 2: jump
         elif moving_left_player1 or moving_right_player1:
@@ -270,6 +320,8 @@ while run:
                 shoot1 = True
             if event.key == pygame.K_w and player1.alive:
                 player1.jump = True
+            if event.key == pygame.K_q:
+                grenade = True
             if event.key == pygame.K_ESCAPE:
                 run = False
 
@@ -282,6 +334,9 @@ while run:
                 moving_right_player1 = False
             if event.key == pygame.K_SPACE:
                 shoot1 = False
+            if event.key == pygame.K_q:
+                grenade = False
+                grenade_thrown = False
 
         # Player2
         # Khi giư phím
