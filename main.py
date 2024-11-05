@@ -38,12 +38,12 @@ def main_menu():
         screen.fill(BG)
         # add buttons
         if start_1_button.draw(screen):
-            subprocess.Popen(["python", "demo.py"])
+            subprocess.Popen(["python", "one_player_mode.py"])
             time.sleep(1)  # Đợi 1 giây để đảm bảo game đã khởi động
             pygame.quit()
             sys.exit()
         if start_2_button.draw(screen):
-            subprocess.Popen(["python", "pk_mode.py"])
+            subprocess.Popen(["python", "two_player_mode.py"])
             time.sleep(1)  # Đợi 1 giây để đảm bảo game đã khởi động
             pygame.quit()
             sys.exit()
