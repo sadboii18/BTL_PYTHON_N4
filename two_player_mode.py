@@ -1,3 +1,5 @@
+import random
+
 import pygame
 import os
 import csv
@@ -6,7 +8,7 @@ import button
 
 pygame.init()
 
-SCREEN_WIDTH = 1440
+SCREEN_WIDTH = 1600
 SCREEN_HEIGHT = 640
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -22,7 +24,11 @@ ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
-level = 8
+
+
+
+level_list = [10, 11]
+level = random.choice(level_list)
 
 # define player action variables
 shoot1 = False
@@ -196,7 +202,7 @@ class Soldier(pygame.sprite.Sprite):
 
         # jump
         if self.jump == True and self.in_air == False:
-            self.vel_y = -11
+            self.vel_y = -12
             self.jump = False
             self.in_air = True
 
@@ -339,13 +345,10 @@ class World():
                     elif tile == 15  :# create player
                         player1 = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.3, 5, 40, 5)
                         health_bar1 = HealthBar(10, 10, player1.health, player1.health)
-                        i+=1
-                        if i == 1:
-                            player2 = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.3, 5, 40, 5)
-                            health_bar2 = HealthBar(SCREEN_WIDTH - 150 - 10, 10, player2.health, player2.health)
+
                     elif tile == 16:# create enemies
-                        enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.5, 2, 20, 0)
-                        enemy_group.add(enemy)
+                        player2 = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.3, 5, 40, 5)
+                        health_bar2 = HealthBar(SCREEN_WIDTH - 150 - 10, 10, player2.health, player2.health)
                     elif tile == 17  :# create ammo box
                         item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
                         item_box_group.add(item_box)
@@ -459,12 +462,12 @@ class Bullet(pygame.sprite.Sprite):
         # check collision with characters
         if pygame.sprite.spritecollide(player1, player2_bullet_group, False):
             if player1.alive:
-                player1.health -= 5
+                player1.health -= 20
                 self.kill()
 
         if pygame.sprite.spritecollide(player2, player1_bullet_group, False):
             if player2.alive:
-                player2.health -= 5
+                player2.health -= 20
                 self.kill()
 
 

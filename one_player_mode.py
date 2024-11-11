@@ -24,10 +24,10 @@ ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
-MAX_LEVELS = 3
+MAX_LEVELS = 6
 screen_scroll = 0
 bg_scroll = 0
-level = 1
+level = 4
 start_intro = True
 
 # define player action variables
@@ -344,7 +344,7 @@ class Soldier(pygame.sprite.Sprite):
     def draw(self):
         screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
 
-
+#start
 class World():
     def __init__(self):
         self.obstacle_list = []
@@ -366,13 +366,16 @@ class World():
                         water = Water(img, x * TILE_SIZE, y * TILE_SIZE)
                         water_group.add(water)
                     elif tile >= 11 and tile <= 14:
-                        decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
-                        decoration_group.add(decoration)
+                        if tile == 12:
+                            self.obstacle_list.append(tile_data)
+                        else:
+                            decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
+                            decoration_group.add(decoration)
                     elif tile == 15:  # create player
-                        player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)
+                        player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.35, 5, 20, 5)
                         health_bar = HealthBar(10, 10, player.health, player.health)
                     elif tile == 16:  # create enemies
-                        enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0)
+                        enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.35, 2, 20, 0)
                         enemy_group.add(enemy)
                     elif tile == 17:  # create ammo box
                         item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
@@ -452,7 +455,7 @@ class ItemBox(pygame.sprite.Sprite):
                 player.grenades += 3
             # delete the item box
             self.kill()
-
+#end
 
 class HealthBar():
     def __init__(self, x, y, health, max_health):

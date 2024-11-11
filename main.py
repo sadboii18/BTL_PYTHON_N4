@@ -49,7 +49,6 @@ def main_menu():
             sys.exit()
         if exit_button.draw(screen):
             run = False
-
         # Kiểm tra sự kiện
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
