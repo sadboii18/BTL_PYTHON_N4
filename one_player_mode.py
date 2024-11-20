@@ -36,7 +36,7 @@ moving_right = False
 shoot = False
 grenade = False
 grenade_thrown = False
-
+flash_check=False
 # load music and sounds
 pygame.mixer.music.load('audio/music2.mp3')
 pygame.mixer.music.set_volume(0.3)
@@ -68,6 +68,8 @@ bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
 # grenade
 grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()
 # pick up boxes
+flash_img= pygame.image.load('img/icons/Flash_A_01 (2).png').convert_alpha()
+flash_img= pygame.transform.scale(flash_img,(20,20))
 health_box_img = pygame.image.load('img/icons/health_box.png').convert_alpha()
 ammo_box_img = pygame.image.load('img/icons/ammo_box.png').convert_alpha()
 grenade_box_img = pygame.image.load('img/icons/grenade_box.png').convert_alpha()
@@ -286,6 +288,7 @@ class Soldier(pygame.sprite.Sprite):
                 self.update_action(0)  # 0: idle
                 # shoot
                 self.shoot()
+
             else:
                 if self.idling == False:
                     if self.direction == 1:
@@ -473,7 +476,19 @@ class HealthBar():
         pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
         pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 
-
+class Flash(pygame.sprite.Sprite):
+	def __init__ (self,x,y,direction,flip):
+		pygame.sprite.Sprite.__init__(self)
+		self.flip=flip
+		self.timer=5
+		self.image= pygame.transform.flip(flash_img, self.flip,False)
+		self.rect= self.image.get_rect()
+		self.rect.center = (x, y)
+		self.direction= direction
+	def update(self):
+		self.timer -= 1
+		if self.timer <= 0:
+			self.kill()
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -636,6 +651,7 @@ item_box_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
+flash_group= pygame.sprite.Group()
 
 # create empty tile list
 world_data = []
@@ -686,6 +702,8 @@ while run:
     decoration_group.update()
     water_group.update()
     exit_group.update()
+    flash_group.update()
+    flash_group.draw(screen)
     bullet_group.draw(screen)
     grenade_group.draw(screen)
     explosion_group.draw(screen)
@@ -703,7 +721,12 @@ while run:
     # update player actions
     if player.alive:
         # shoot bullets
-        if shoot:
+        if shoot and flash_check == False:
+            flash = Flash(player.rect.centerx + (0.55 * player.rect.size[1] * player.direction),
+                          player.rect.centery + 3,
+                          player.direction, player.flip)
+            flash_group.add(flash)
+            flash_check = True
             player.shoot()
         # throw grenades
         elif grenade and grenade_thrown == False and player.grenades > 0:
@@ -781,6 +804,7 @@ while run:
                 moving_right = False
             if event.key == pygame.K_SPACE:
                 shoot = False
+                flash_check = False
             if event.key == pygame.K_q:
                 grenade = False
                 grenade_thrown = False

@@ -3,12 +3,11 @@ import random
 import pygame
 import os
 import csv
-
 import button
 
 pygame.init()
 
-SCREEN_WIDTH = 1600
+SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 640
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -25,7 +24,7 @@ COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
 
-
+start_game = False
 
 level_list = [10, 11]
 level = random.choice(level_list)
@@ -33,6 +32,12 @@ level = random.choice(level_list)
 # define player action variables
 shoot1 = False
 shoot2 = False
+
+player1_char = "ahri"
+player2_char = "samurai"
+
+attack1=False
+attack2=False
 
 moving_left_player1 = False
 moving_right_player1 = False
@@ -67,6 +72,14 @@ mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()
 sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
 restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
 exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()
+flash_img = pygame.image.load(f'img/3.png').convert_alpha()
+flash_img = pygame.transform.scale(flash_img, (50,50))
+start_img = pygame.image.load('img/start_btn.png').convert_alpha()
+map1_img = pygame.image.load('img/map1.png').convert_alpha()
+map2_img = pygame.image.load('img/map2.png').convert_alpha()
+char_1_img = pygame.image.load('img/ahri/Idle/0.png').convert_alpha()
+char_2_img = pygame.image.load('img/samurai/Idle/0.png').convert_alpha()
+
 # store tiles in a list
 img_list = []
 for x in range(TILE_TYPES):
@@ -95,9 +108,32 @@ WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 PINK = (235, 65, 54)
+BLUE = (0, 122, 204)
+LIGHT_BLUE = (173, 216, 230)
 
 # define font
 font = pygame.font.SysFont('Futura', 30)
+FONT = pygame.font.Font(None, 40)
+
+def draw_button(surface, text, rect, base_color, hover_color, text_color):
+    """Draws a button and returns True if clicked."""
+    mouse_pos = pygame.mouse.get_pos()
+    is_hovered = rect.collidepoint(mouse_pos)
+    color = hover_color if is_hovered else base_color
+    pygame.draw.rect(surface, color, rect)
+
+    # Draw button text
+    text_surf = FONT.render(text, True, text_color)
+    text_rect = text_surf.get_rect(center=rect.center)
+    surface.blit(text_surf, text_rect)
+
+    # Return if clicked
+    if is_hovered and pygame.mouse.get_pressed()[0]:
+        return True
+    return False
+
+def start_game_screen():
+    screen.fill(BG)
 
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
@@ -141,6 +177,7 @@ class Soldier(pygame.sprite.Sprite):
         self.shoot_cooldown = 0
         self.grenades = grenades
         self.health = 100
+        self.effect_one=False
         self.max_health = self.health
         self.direction = 1
         self.vel_y = 0
@@ -158,7 +195,7 @@ class Soldier(pygame.sprite.Sprite):
         self.idling_counter = 0
 
         # load all images for the players
-        animation_types = ['Idle', 'Run', 'Jump', 'Death']
+        animation_types = ['Idle', 'Run', 'Jump', 'Death','Shoot','Attack']
         for animation in animation_types:
             # reset temporary list of images
             temp_list = []
@@ -202,7 +239,7 @@ class Soldier(pygame.sprite.Sprite):
 
         # jump
         if self.jump == True and self.in_air == False:
-            self.vel_y = -12
+            self.vel_y = -16
             self.jump = False
             self.in_air = True
 
@@ -247,14 +284,30 @@ class Soldier(pygame.sprite.Sprite):
         self.rect.y += dy
 
 
+    def effect(self,scale,newAction,speed,sped,num):
 
+        if self.frame_index >= len(self.animation_list[newAction])-1 and self.effect_one==False:
+            skill1 = Effect(self.rect.centerx + (1 * self.rect.size[0] * self.direction),
+                            self.rect.centery, self.direction, scale,self.flip, speed,sped, 'fire', num)
+            if self is player1:
+                player1_small_group.add(skill1)
+            else:
+                player2_small_group.add(skill1)
+            if num==0:
+                skill2 = Effect(self.rect.centerx + (0.5 * self.rect.size[0] * self.direction),
+                                self.rect.top, self.direction, scale,self.flip, 5,sped, 'fire', num)
+                player1_small_group.add(skill2)
+                skill3 = Effect(self.rect.centerx + (0.5 * self.rect.size[0] * self.direction),
+                                self.rect.top, self.direction, scale, self.flip,10,sped, 'fire', num)
+                player1_small_group.add(skill3)
+            self.effect_one=True
 
     def shoot(self):
 
         if self is player1:
 
             if self.shoot_cooldown == 0 and self.ammo > 0:
-                self.shoot_cooldown = 20
+                self.shoot_cooldown = 40
                 bullet = Bullet(self.rect.centerx + (0.75 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
                 player1_bullet_group.add(bullet)
                 # reduce ammo
@@ -262,7 +315,7 @@ class Soldier(pygame.sprite.Sprite):
                 shot_fx.play()
         else:
             if self.shoot_cooldown == 0 and self.ammo > 0:
-                self.shoot_cooldown = 20
+                self.shoot_cooldown = 40
                 bullet = Bullet(self.rect.centerx + (0.75 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
                 player2_bullet_group.add(bullet)
                 # reduce ammo
@@ -284,11 +337,23 @@ class Soldier(pygame.sprite.Sprite):
         if self.frame_index >= len(self.animation_list[self.action]):
             if self.action == 3:
                 self.frame_index = len(self.animation_list[self.action]) - 1
-            else:
+            elif self.action==4:
                 self.frame_index = 0
-
-
-
+                if self is player1:
+                    global shoot1
+                    shoot1=False
+                else:
+                    global shoot2
+                    shoot2=False
+            elif self.action == 5:
+                if self is player1:
+                    global attack1
+                    attack1=False
+                else:
+                    global attack2
+                    attack2=False
+            else:
+                self.frame_index=0
     def update_action(self, new_action):
         # check if the new action is different to the previous one
         if new_action != self.action:
@@ -343,11 +408,10 @@ class World():
                         decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
                         decoration_group.add(decoration)
                     elif tile == 15  :# create player
-                        player1 = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.3, 5, 40, 5)
+                        player1 = Soldier(f'{player1_char}', x * TILE_SIZE, y * TILE_SIZE, 1, 5, 40, 5)
                         health_bar1 = HealthBar(10, 10, player1.health, player1.health)
-
                     elif tile == 16:# create enemies
-                        player2 = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.3, 5, 40, 5)
+                        player2 = Soldier(f'{player2_char}', x * TILE_SIZE, y * TILE_SIZE, 1, 5, 40, 5)
                         health_bar2 = HealthBar(SCREEN_WIDTH - 150 - 10, 10, player2.health, player2.health)
                     elif tile == 17  :# create ammo box
                         item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
@@ -438,6 +502,51 @@ class HealthBar():
         pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 
 
+class Effect(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction, scale,flip,speed,sped,type,num):
+        pygame.sprite.Sprite.__init__(self)
+        self.speed = speed
+        self.flip=flip
+        self.type=type
+        self.sped=sped
+        self.num=num
+        img = pygame.image.load(f'img/{self.type}/{self.num}.png').convert_alpha()
+        img = pygame.transform.scale(img, (int(img.get_width()) * scale, int(img.get_height()*scale)))
+        img=pygame.transform.flip(img, self.flip, False)
+        self.frame_index = 0
+        self.image = img
+        self.timer = 8
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
+        self.counter = 0
+
+    def update(self):
+        self.rect.x += (self.direction * self.sped)
+        self.rect.y += (self.direction * self.speed)
+
+        # check if bullet has gone off screen
+        if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
+            self.kill()
+        if self.num==3:
+            self.timer -= 1
+            if self.timer <= 0:
+                self.kill()
+        # check for collision with level
+        for tile in world.obstacle_list:
+            if tile[1].colliderect(self.rect):
+                self.kill()
+
+        if pygame.sprite.spritecollide(player1, player2_small_group, False):
+            if player1.alive:
+                player1.health -= 15
+                self.kill()
+
+        if pygame.sprite.spritecollide(player2, player1_small_group, False):
+            if player2.alive:
+                player2.health -= 15
+                self.kill()
+
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -526,7 +635,6 @@ class Grenade(pygame.sprite.Sprite):
                     player.health -= 50
 
 
-
 class Explosion(pygame.sprite.Sprite):
     def __init__(self, x, y, scale):
         pygame.sprite.Sprite.__init__(self)
@@ -583,8 +691,18 @@ class ScreenFade():
 intro_fade = ScreenFade(1, BLACK, 4)
 death_fade = ScreenFade(2, PINK, 4)
 
-exit_button = button.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, exit_img, 1)
+# start_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 50, 200, 50)
+# map_1_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 150, 200, 50)
+# map_2_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 250, 200, 50)
+# player1_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 350, 200, 50)
+# player2_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 450, 200, 50)
+exit_button = pygame.Rect(SCREEN_WIDTH/2 - 100, 550, 200, 50)
 
+ahri_char1 = button.Button(SCREEN_WIDTH/2 + 110, 310, char_1_img, 1)
+samurai_char1 = button.Button(SCREEN_WIDTH/2 + 210, 310, char_2_img, 1)
+
+ahri_char2 = button.Button(SCREEN_WIDTH/2  + 110, 410, char_1_img, 1)
+samurai_char2 = button.Button(SCREEN_WIDTH/2 + 210, 410, char_2_img, 1)
 # create sprite groups
 enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
@@ -597,6 +715,13 @@ exit_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 player1_bullet_group = pygame.sprite.Group()
 player2_bullet_group = pygame.sprite.Group()
+player1_small_group=pygame.sprite.Group()
+player2_small_group=pygame.sprite.Group()
+player2_big_group=pygame.sprite.Group()
+player1_big_group=pygame.sprite.Group()
+
+
+
 
 
 # create empty tile list
@@ -612,36 +737,50 @@ with open(f'level{level}_data.csv', newline='') as csvfile:
             world_data[x][y] = int(tile)
 world = World()
 player1, health_bar1, player2, health_bar2 = world.process_data(world_data)
-
 player_group.add(player1)
 player_group.add(player2)
+
+
+
 run = True
 while run:
 
     clock.tick(FPS)
+    # if start_game == False:
+    #     screen.fill(BLACK)
+    #     if draw_button(screen, "Start Game", start_button, BLUE, LIGHT_BLUE, WHITE) and len(player1_char) > 0 and len(player2_char) > 0:
+    #         start_game = True
+    #     if draw_button(screen, "Map 1", map_1_button, BLUE, LIGHT_BLUE, WHITE):
+    #         level = 10
+    #     if draw_button(screen, "Map 2", map_2_button, BLUE, LIGHT_BLUE, WHITE):
+    #         level = 11
+    #
+    #     draw_button(screen, "Player 1", player1_button, BLUE, LIGHT_BLUE, WHITE)
+    #     if ahri_char1.draw(screen):
+    #         player1_char = "ahri"
+    #     if samurai_char1.draw(screen):
+    #         player1_char = "samurai"
+    #     draw_button(screen, "Player 2", player2_button, BLUE, LIGHT_BLUE, WHITE)
+    #     if ahri_char2.draw(screen):
+    #         player2_char = "ahri"
+    #     if samurai_char2.draw(screen):
+    #         player2_char = "samurai"
+    #     if draw_button(screen, "EXIT", exit_button, BLUE, LIGHT_BLUE, WHITE):
+    #         run = False
 
-    # update background
+    # else:
+# update background
     draw_bg()
     # draw world map
     world.draw()
     # show player health
     health_bar1.draw(player1.health)
     # show ammo
-    for x in range(player1.ammo):
-        screen.blit(bullet_img, (30 + (x * 10), 40))
-    # show grenades
-    for x in range(player1.grenades):
-        screen.blit(grenade_img, (30 + (x * 15), 60))
 
     # player2 status
     # show player health
     health_bar2.draw(player2.health)
     # show ammo
-    for x in range(player2.ammo):
-        screen.blit(bullet_img, (SCREEN_WIDTH - (30 + (x * 10)), 40))
-    # show grenades
-    for x in range(player2.grenades):
-        screen.blit(grenade_img, (SCREEN_WIDTH - (30 + (x * 15)), 60))
 
 
     for player in player_group:
@@ -662,6 +801,10 @@ while run:
     exit_group.update()
     player1_bullet_group.update()
     player2_bullet_group.update()
+    player1_small_group.update()
+    player2_small_group.update()
+    player1_big_group.update()
+    player2_big_group.update()
 
     bullet_group.draw(screen)
     grenade_group.draw(screen)
@@ -672,6 +815,10 @@ while run:
     exit_group.draw(screen)
     player1_bullet_group.draw(screen)
     player2_bullet_group.draw(screen)
+    player1_small_group.draw(screen)
+    player2_small_group.draw(screen)
+    player1_big_group.draw(screen)
+    player2_big_group.draw(screen)
 
     if start_intro == True:
         if intro_fade.fade():
@@ -680,20 +827,27 @@ while run:
 
     # update player actions
     if player1.alive:
+
         # Hanh dong ban cua nhan vat
+        # if shoot1:
+        #     player1.shoot()
+        # # Hanh dong nem luu dan cua nhan vat
+        # elif grenade and grenade_thrown == False and player1.grenades > 0:
+        #     grenadeee = Grenade(player1.rect.centerx + (0.5 * player1.rect.size[0] * player1.direction), player1.rect.top, player1.direction)
+        #     grenade_group.add(grenadeee)
+        #     # reduce grenades
+        #     player1.grenades -= 1
+        #     grenade_thrown = True
+
         if shoot1:
-            player1.shoot()
+            player1.update_action(4) # shoot
+            player1.effect(2,4,0,9,1)
+        elif attack1:
+            player1.update_action(5) # attack
+            player1.effect(1,5,0,7,0)
 
-        # Hanh dong nem luu dan cua nhan vat
-        elif grenade and grenade_thrown == False and player1.grenades > 0:
-            grenadeee = Grenade(player1.rect.centerx + (0.5 * player1.rect.size[0] * player1.direction), player1.rect.top, player1.direction)
-            grenade_group.add(grenadeee)
-            # reduce grenades
-            player1.grenades -= 1
-            grenade_thrown = True
-
-        if player1.in_air:
-            player1.update_action(2)  # 2: jump
+        elif player1.in_air:
+            player1.update_action(2)  # 2: jump4
         elif moving_left_player1 or moving_right_player1:
             player1.update_action(1)  # 1: run
         else:
@@ -702,17 +856,15 @@ while run:
         player1.move(moving_left_player1, moving_right_player1)
 
     if player2.alive:
-        # shoot bullets
-        if shoot2:
-            player2.shoot()
 
-        elif grenade2 and grenade_thrown2 == False and player2.grenades > 0:
-            grenadeee = Grenade(player2.rect.centerx + (0.5 * player2.rect.size[0] * player2.direction), player2.rect.top, player2.direction)
-            grenade_group.add(grenadeee)
-            # reduce grenades
-            player2.grenades -= 1
-            grenade_thrown2 = True
-        if player2.in_air:
+
+        if shoot2:
+            player2.update_action(4)  # shoot
+            player2.effect(1.5,4, 0,9, 4)
+        elif attack2:
+            player2.update_action(5)  # attack
+            player2.effect(0.3,5,0,0,3)
+        elif player2.in_air:
             player2.update_action(2)  # 2: jump
         elif moving_left_player2 or moving_right_player2:
             player2.update_action(1)  # 1: run
@@ -738,13 +890,16 @@ while run:
                 moving_right_player1 = True
             if event.key == pygame.K_SPACE:
                 shoot1 = True
+                player1.effect_one=False
+            if event.key == pygame.K_ESCAPE:
+                run = False
             if event.key == pygame.K_w and player1.alive:
                 player1.jump = True
                 jump_fx.play()
             if event.key == pygame.K_q:
-                grenade = True
-            if event.key == pygame.K_ESCAPE:
-                run = False
+                attack1=True
+                player1.effect_one=False
+
 
         # Khi nhả phím
         if event.type == pygame.KEYUP:
@@ -752,8 +907,8 @@ while run:
                 moving_left_player1 = False
             if event.key == pygame.K_d:
                 moving_right_player1 = False
-            if event.key == pygame.K_SPACE:
-                shoot1 = False
+            # if event.key == pygame.K_SPACE:
+            #     shoot1 = False
             if event.key == pygame.K_q:
                 grenade = False
                 grenade_thrown = False
@@ -765,10 +920,12 @@ while run:
                 moving_left_player2 = True
             if event.key == pygame.K_RIGHT:
                 moving_right_player2 = True
-            if event.key == pygame.K_DOWN:
+            if event.key == pygame.K_1:
+                player2.effect_one=False
                 shoot2 = True
-            if event.key == pygame.K_k:
-                grenade2 = True
+            if event.key == pygame.K_2:
+                player2.effect_one=False
+                attack2 = True
             if event.key == pygame.K_UP and player2.alive:
                 player2.jump = True
                 jump_fx.play()
@@ -781,12 +938,6 @@ while run:
                 moving_left_player2 = False
             if event.key == pygame.K_RIGHT:
                 moving_right_player2 = False
-            if event.key == pygame.K_DOWN:
-                shoot2 = False
-            if event.key == pygame.K_k:
-                grenade2 = False
-                grenade_thrown2 = False
-
 
     pygame.display.update()
 
